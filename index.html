@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+<title>South Western Railway Shift-wise Workforce Tracking</title>
+<style>
+  /* Base and reset */
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0; padding: 10px 12px 50px;
+    background-color: #f9fafc;
+    color: #222;
+    min-height: 600px;
+    max-width: 350px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  h1, h2 {
+    color: #0b3d91;
+    margin: 12px 0 8px;
+    font-weight: 700;
+    text-align: center;
+  }
+  h2 {
+    font-size: 1.2rem;
+  }
+  label {
+    font-weight: 600;
+    margin-top: 10px;
+    display: block;
+    color: #333;
+  }
+  input[type=text], select, input[type=time], input[type=date] {
+    width: 100%;
+    padding: 6px 10px;
+    border: 2px solid #0b3d91;
+    border-radius: 6px;
+    font-size: 1rem;
+  }
+  button {
+    background-color: #0b3d91;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 0;
+    width: 100%;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 12px;
+    font-size: 1rem;
+    transition: background-color 0.3s ease;
+  }
+  button:hover:not(:disabled) {
+    background-color: #094177;
+  }
+  button:disabled {
+    background-color: #a0a0a0;
+    cursor: default;
+  }
+  .section {
+    background: white;
+    border-radius: 12px;
+    padding: 15px 15px 20px;
+    box-shadow: 0 4px 12px rgb(11 61 145 / 0.15);
+    margin-bottom: 20px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 8px;
+  }
+  th, td {
+    padding: 6px 8px;
+    border-bottom: 1px solid #ddd;
+    font-size: 0.9rem;
+    text-align: center;
+  }
+  th {
+    background-color: #0b3d91;
+    color: white;
+  }
+  .small-text {
+    font-size: 0.8rem;
+    color: #555;
+  }
+  .status-present {
+    color: #28a745;
+    font-weight: 700;
+  }
+  .status-absent {
+    color: #dc3545;
+    font-weight: 700;
+  }
+  .report-section {
+    font-size: 0.9rem;
+    margin-top: 10px;
+    background: #e8f0fe;
+    padding: 8px;
+    border-radius: 8px;
+  }
+  /* Scroll for tables on mobile */
+  .table-wrapper {
+    overflow-x: auto;
+  }
+  /* Responsive tweaks */
+  @media (max-width: 480px) {
+    body {
+      max-width: 100vw;
+      padding: 10px 8px 50px;
+    }
+  }
+</style>
+</head>
+<body>
+<h1>South Western Railway</h1>
+<h2>Shift-wise Workforce Tracking</h2>
+
+<div class="section" id="shiftMgmtSection" aria-label="Shift Management">
+  <h3>Manage Shifts</h3>
+  <form id="shiftForm" autocomplete="off">
+    <label for="shiftName">Shift Name</label>
+    <input type="text" id="shiftName" placeholder="e.g. Morning Shift" required minlength="3" />
+
+    <label for="shiftStart">Start Time</label>
+    <input type="time" id="shiftStart" required />
+
+    <label for="shiftEnd">End Time</label>
+    <input type="time" id="shiftEnd" required />
+
+    <button type="submit">Add Shift</button>
+  </form>
+  <div class="table-wrapper" aria-live="polite" aria-relevant="all" style="margin-top:15px;">
+    <table aria-label="Current Shifts">
+      <thead>
+        <tr><th>Shift</th><th>Start</th><th>End</th><th>Actions</th></tr>
+      </thead>
+      <tbody id="shiftTableBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="section" id="employeeMgmtSection" aria-label="Employee Management">
+  <h3>Manage Employees</h3>
+  <form id="employeeForm" autocomplete="off">
+    <label for="employeeId">Employee ID</label>
+    <input type="text" id="employeeId" placeholder="e.g. EMP001" maxlength="10" required />
+
+    <label for="employeeName">Employee Name</label>
+    <input type="text" id="employeeName" placeholder="e.g. Rajesh Kumar" required minlength="3" />
+
+    <button type="submit">Add Employee</button>
+  </form>
+  <div class="table-wrapper" aria-live="polite" aria-relevant="all" style="margin-top:15px;">
+    <table aria-label="Current Employees">
+      <thead>
+        <tr><th>ID</th><th>Name</th><th>Actions</th></tr>
+      </thead>
+      <tbody id="employeeTableBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="section" id="attendanceSection" aria-label="Attendance Logging">
+  <h3>Log Attendance</h3>
+  <form id="attendanceForm" autocomplete="off">
+    <label for="selectEmployee">Select Employee</label>
+    <select id="selectEmployee" required>
+      <option value="">-- Select Employee --</option>
+    </select>
+
+    <label for="selectShift">Select Shift</label>
+    <select id="selectShift" required>
+      <option value="">-- Select Shift --</option>
+    </select>
+
+    <label for="attendanceAction">Action</label>
+    <select id="attendanceAction" required>
+      <option value="checkin">Check In</option>
+      <option value="checkout">Check Out</option>
+    </select>
+
+    <button type="submit">Record Attendance</button>
+  </form>
+  <div aria-live="polite" id="attendanceStatus" style="margin-top:10px; font-weight:700;"></div>
+</div>
+
+<div class="section" id="taskSection" aria-label="Work Process and Task Assignment">
+  <h3>Assign Work Process/Task</h3>
+  <form id="taskForm" autocomplete="off">
+    <label for="taskEmployee">Employee</label>
+    <select id="taskEmployee" required>
+      <option value="">-- Select Employee --</option>
+    </select>
+
+    <label for="taskShift">Shift</label>
+    <select id="taskShift" required>
+      <option value="">-- Select Shift --</option>
+    </select>
+
+    <label for="taskDesc">Task Description</label>
+    <input type="text" id="taskDesc" placeholder="e.g. Track Inspection" required minlength="3" />
+
+    <button type="submit">Assign Task</button>
+  </form>
+  <div class="table-wrapper" aria-live="polite" aria-relevant="all" style="margin-top:15px;">
+    <table aria-label="Current Tasks">
+      <thead>
+        <tr><th>Employee</th><th>Shift</th><th>Task</th><th>Assign Time</th></tr>
+      </thead>
+      <tbody id="taskTableBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="section" id="dashboardSection" aria-label="Real-time Dashboard & Reports">
+  <h3>Real-time Dashboard & Reports</h3>
+  
+  <label for="dashboardShiftFilter">Filter by Shift</label>
+  <select id="dashboardShiftFilter">
+    <option value="">-- All Shifts --</option>
+  </select>
+
+  <div class="table-wrapper" style="margin-top:10px;">
+  <table aria-label="Attendance Dashboard">
+    <thead>
+      <tr><th>Employee</th><th>Shift</th><th>Status</th><th>Check-In Time</th><th>Check-Out Time</th></tr>
+    </thead>
+    <tbody id="dashboardTableBody"></tbody>
+  </table>
+  </div>
+
+  <div class="report-section" aria-live="polite" aria-relevant="all" id="attendanceReport">
+    <!-- Attendance summary report -->
+  </div>
+</div>
+
+<script>
+  // Data management keys for localStorage
+  const STORAGE_KEYS = {
+    shifts: 'swrailway_shifts',
+    employees: 'swrailway_employees',
+    attendance: 'swrailway_attendance',
+    tasks: 'swrailway_tasks',
+  };
+
+  // Load data from localStorage or initialize as empty arrays
+  let shifts = JSON.parse(localStorage.getItem(STORAGE_KEYS.shifts)) || [];
+  let employees = JSON.parse(localStorage.getItem(STORAGE_KEYS.employees)) || [];
+  let attendanceRecords = JSON.parse(localStorage.getItem(STORAGE_KEYS.attendance)) || [];
+  let tasks = JSON.parse(localStorage.getItem(STORAGE_KEYS.tasks)) || [];
+
+  const shiftTableBody = document.getElementById('shiftTableBody');
+  const employeeTableBody = document.getElementById('employeeTableBody');
+  const taskTableBody = document.getElementById('taskTableBody');
+  const dashboardTableBody = document.getElementById('dashboardTableBody');
+  const attendanceStatus = document.getElementById('attendanceStatus');
+
+  const selectEmployee = document.getElementById('selectEmployee');
+  const selectShift = document.getElementById('selectShift');
+  const taskEmployee = document.getElementById('taskEmployee');
+  const taskShift = document.getElementById('taskShift');
+  const dashboardShiftFilter = document.getElementById('dashboardShiftFilter');
+
+  // Utility: Save all data to localStorage
+  function saveAll() {
+    localStorage.setItem(STORAGE_KEYS.shifts, JSON.stringify(shifts));
+    localStorage.setItem(STORAGE_KEYS.employees, JSON.stringify(employees));
+    localStorage.setItem(STORAGE_KEYS.attendance, JSON.stringify(attendanceRecords));
+    localStorage.setItem(STORAGE_KEYS.tasks, JSON.stringify(tasks));
+  }
+
+  // Utility: Format time string hh:mm to 12-hour am/pm
+  function formatTime24to12(time24) {
+    if(!time24) return '-';
+    const [h,m] = time24.split(':');
+    let hour = Number(h);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    hour = hour % 12 || 12;
+    return `${hour}:${m} ${ampm}`;
+  }
+
+  // Add shift to table
+  function renderShifts() {
+    shiftTableBody.innerHTML = '';
+    shifts.forEach((shift, idx) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${shift.name}</td>
+        <td>${formatTime24to12(shift.start)}</td>
+        <td>${formatTime24to12(shift.end)}</td>
+        <td>
+          <button aria-label="Delete shift" title="Delete" onclick="deleteShift(${idx})" style="color:#dc3545; font-weight:bold; border:none; background:none; cursor:pointer;">✕</button>
+        </td>
+      `;
+      shiftTableBody.appendChild(tr);
+    });
+    populateShiftSelects();
+    populateDashboardShiftFilter();
+  }
+
+  // Add employees to table
+  function renderEmployees() {
+    employeeTableBody.innerHTML = '';
+    employees.forEach((emp, idx) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${emp.id}</td>
+        <td>${emp.name}</td>
+        <td>
+          <button aria-label="Delete employee" title="Delete" onclick="deleteEmployee(${idx})" style="color:#dc3545; font-weight:bold; border:none; background:none; cursor:pointer;">✕</button>
+        </td>
+      `;
+      employeeTableBody.appendChild(tr);
+    });
+    populateEmployeeSelects();
+  }
+
+  // Add tasks to table
+  function renderTasks() {
+    taskTableBody.innerHTML = '';
+    tasks.forEach(task => {
+      const employee = employees.find(e => e.id === task.employeeId);
+      const shift = shifts.find(s => s.name === task.shiftName);
+      const assignTime = new Date(task.assignedAt).toLocaleString();
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${employee ? employee.name : 'Unknown'}</td>
+        <td>${shift ? shift.name : 'Unknown'}</td>
+        <td>${task.description}</td>
+        <td>${assignTime}</td>
+      `;
+      taskTableBody.appendChild(tr);
+    });
+  }
+
+  // Render dashboard attendance table with optional shift filter
+  function renderDashboard() {
+    const filterShift = dashboardShiftFilter.value;
+    dashboardTableBody.innerHTML = '';
+
+    // Get unique employee-shift pairs from attendance records of today only
+    const todayISO = new Date().toISOString().slice(0,10);
+
+    // Filter attendance for today & optional shift
+    const filteredAttendance = attendanceRecords.filter(rec => {
+      return rec.date === todayISO && (filterShift === '' || rec.shiftName === filterShift);
+    });
+
+    // Build map: key=employeeId+shiftName, value={checkin, checkout}
+    const attendanceMap = {};
+    filteredAttendance.forEach(rec => {
+      const key = rec.employeeId + '|' + rec.shiftName;
+      if (!attendanceMap[key]) attendanceMap[key] = {employeeId: rec.employeeId, shiftName: rec.shiftName, date: rec.date};
+      if (rec.action === 'checkin') attendanceMap[key].checkIn = rec.timestamp;
+      if (rec.action === 'checkout') attendanceMap[key].checkOut = rec.timestamp;
+    });
+
+    Object.values(attendanceMap).forEach(rec => {
+      const employee = employees.find(e => e.id === rec.employeeId);
+      const shift = shifts.find(s => s.name === rec.shiftName);
+      // Determine status presence
+      const statusPresent = rec.checkIn && rec.checkOut;
+      const statusPartial = rec.checkIn && !rec.checkOut;
+      const statusText = statusPresent ? 'Present' : (statusPartial ? 'Checked In' : 'Absent');
+      const statusClass = statusPresent || statusPartial ? 'status-present' : 'status-absent';
+
+      function formatTimestamp(ts) {
+        if (!ts) return '-';
+        const d = new Date(ts);
+        return d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+      }
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${employee ? employee.name : 'Unknown'}</td>
+        <td>${shift ? shift.name : 'Unknown'}</td>
+        <td class="${statusClass}">${statusText}</td>
+        <td>${formatTimestamp(rec.checkIn)}</td>
+        <td>${formatTimestamp(rec.checkOut)}</td>
+      `;
+      dashboardTableBody.appendChild(tr);
+    });
+
+    renderReport(filteredAttendance);
+  }
+
+  // Generate attendance report summary for the day
+  function renderReport(todayAttendance) {
+    // Count employees per shift present fully or partially
+    const summary = {};
+    todayAttendance.forEach(rec => {
+      if (!summary[rec.shiftName]) summary[rec.shiftName] = {total:0, present:0};
+      summary[rec.shiftName].total++; // count records - note duplicates for checkin & checkout
+    });
+
+    // From dashboard table map employees per shift with status - recalc
+    const presentCount = {};
+    const presentKeys = new Set();
+
+    todayAttendance.forEach(rec => {
+      const key = rec.employeeId + '|' + rec.shiftName;
+      if (rec.action === 'checkin') {
+        presentKeys.add(key);
+      }
+    });
+
+    presentKeys.forEach(key => {
+      const shift = key.split('|')[1];
+      if (!presentCount[shift]) presentCount[shift] = 0;
+      presentCount[shift]++;
+    });
+
+    const reportDiv = document.getElementById('attendanceReport');
+    reportDiv.innerHTML = '<strong>Attendance Summary (Today):</strong><br/>';
+
+    const shiftNames = Object.keys(summary);
+    if(shiftNames.length === 0){
+      reportDiv.innerHTML += '<em>No attendance data recorded yet today.</em>';
+      return;
+    }
+
+    shiftNames.forEach(shift => {
+      reportDiv.innerHTML += `
+        <div>${shift}: Present ${presentCount[shift] || 0} / Total Records ${summary[shift].total}</div>
+      `;
+    });
+  }
+
+  // Populate selects for employee & shifts everywhere
+  function populateEmployeeSelects() {
+    // Clear all employee selects first
+    [selectEmployee, taskEmployee].forEach(sel => {
+      sel.innerHTML = '<option value="">-- Select Employee --</option>';
+      employees.forEach(emp => {
+        const opt = document.createElement('option');
+        opt.value = emp.id;
+        opt.textContent = `${emp.id} - ${emp.name}`;
+        sel.appendChild(opt);
+      });
+    });
+  }
+
+  function populateShiftSelects() {
+    [selectShift, taskShift, dashboardShiftFilter].forEach(sel => {
+      // Save current value to restore after repopulate
+      const val = sel.value;
+      sel.innerHTML = sel === dashboardShiftFilter ? '<option value="">-- All Shifts --</option>' : '<option value="">-- Select Shift --</option>';
+      shifts.forEach(shift => {
+        const opt = document.createElement('option');
+        opt.value = shift.name;
+        opt.textContent = shift.name;
+        sel.appendChild(opt);
+      });
+      if (val) sel.value = val; // restore
+    });
+  }
+
+  function populateDashboardShiftFilter() {
+    const val = dashboardShiftFilter.value;
+    dashboardShiftFilter.innerHTML = '<option value="">-- All Shifts --</option>';
+    shifts.forEach(shift => {
+      const opt = document.createElement('option');
+      opt.value = shift.name;
+      opt.textContent = shift.name;
+      dashboardShiftFilter.appendChild(opt);
+    });
+    if(val) dashboardShiftFilter.value = val;
+  }
+
+  // Delete shift by index
+  window.deleteShift = function(idx) {
+    if (confirm('Delete this shift? All related attendance/tasks will remain.')) {
+      shifts.splice(idx,1);
+      saveAll();
+      renderShifts();
+      renderDashboard();
+      renderTasks();
+    }
+  }
+
+  // Delete employee by index
+  window.deleteEmployee = function(idx) {
+    if (confirm('Delete this employee? All related attendance/tasks will remain.')) {
+      const empId = employees[idx].id;
+      employees.splice(idx,1);
+      saveAll();
+      renderEmployees();
+      renderDashboard();
+      renderTasks();
+      // Remove attendance related to this employee to keep clean
+      attendanceRecords = attendanceRecords.filter(at => at.employeeId !== empId);
+      saveAll();
+      renderDashboard();
+    }
+  }
+
+  // Handle shift form submission
+  document.getElementById('shiftForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const name = document.getElementById('shiftName').value.trim();
+    const start = document.getElementById('shiftStart').value;
+    const end = document.getElementById('shiftEnd').value;
+
+    if (!name || !start || !end) {
+      alert('Please fill all shift fields correctly.');
+      return;
+    }
+    // Check for duplicate shift name
+    if(shifts.find(s => s.name.toLowerCase() === name.toLowerCase())) {
+      alert('Shift name already exists.');
+      return;
+    }
+    shifts.push({name, start, end});
+    saveAll();
+    renderShifts();
+    e.target.reset();
+  });
+
+  // Handle employee form submission
+  document.getElementById('employeeForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const id = document.getElementById('employeeId').value.trim();
+    const name = document.getElementById('employeeName').value.trim();
+
+    if (!id || !name) {
+      alert('Please fill employee fields correctly.');
+      return;
+    }
+    // Check for duplicate employee id
+    if(employees.find(e => e.id.toLowerCase() === id.toLowerCase())) {
+      alert('Employee ID already exists.');
+      return;
+    }
+    employees.push({id, name});
+    saveAll();
+    renderEmployees();
+    e.target.reset();
+  });
+
+  // Handle attendance logging
+  document.getElementById('attendanceForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const employeeId = selectEmployee.value;
+    const shiftName = selectShift.value;
+    const action = document.getElementById('attendanceAction').value;
+
+    if (!employeeId || !shiftName || !action) {
+      alert('Please select all attendance fields.');
+      return;
+    }
+    // Record attendance with date, time, and action
+    const now = new Date();
+    const isoDate = now.toISOString().slice(0,10); // yyyy-mm-dd
+    attendanceRecords.push({
+      employeeId,
+      shiftName,
+      action,
+      timestamp: now.toISOString(),
+      date: isoDate
+    });
+    saveAll();
+    attendanceStatus.textContent = `Recorded ${action === 'checkin' ? 'Check In' : 'Check Out'} for Employee ${employeeId} on Shift ${shiftName} at ${now.toLocaleTimeString()}`;
+    renderDashboard();
+    e.target.reset();
+  });
+
+  // Handle task assignment
+  document.getElementById('taskForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const employeeId = taskEmployee.value;
+    const shiftName = taskShift.value;
+    const description = document.getElementById('taskDesc').value.trim();
+
+    if (!employeeId || !shiftName || !description) {
+      alert('Please fill all task fields correctly.');
+      return;
+    }
+    tasks.push({
+      employeeId,
+      shiftName,
+      description,
+      assignedAt: new Date().toISOString()
+    });
+    saveAll();
+    renderTasks();
+    e.target.reset();
+  });
+
+  dashboardShiftFilter.addEventListener('change', () => {
+    renderDashboard();
+  });
+
+  // Initial render on page load
+  renderShifts();
+  renderEmployees();
+  renderTasks();
+  renderDashboard();
+
+</script>
+
+</body>
+</html>
+</content>
+</create_file>
